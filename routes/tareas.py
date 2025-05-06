@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from .. import crud, schemas
-from ..database import SessionLocal
+from app.database import SessionLocal
+from app import crud, schemas
 
-router = APIRouter()
+router = APIRouter(prefix="/tareas", tags=["tareas"])
 
 def get_db():
     db = SessionLocal()
@@ -12,13 +12,10 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=schemas.TareaOut)
-def crear_tarea(tarea: schemas.TareaCreate, db: Session = Depends(get_db)):
-    usuario = crud.obtener_usuario(db, tarea.usuario_id)
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return crud.crear_tarea(db, tarea)
+@router.post("/{usuario_id}", response_model=schemas.Tarea)
+def crear_tarea(usuario_id: int, tarea: schemas.TareaCreate, db: Session = Depends(get_db)):
+    return crud.crear_tarea_para_usuario(db, tarea, usuario_id)
 
-@router.get("/usuario/{usuario_id}", response_model=list[schemas.TareaOut])
-def listar_tareas_usuario(usuario_id: int, db: Session = Depends(get_db)):
+@router.get("/usuario/{usuario_id}", response_model=list[schemas.Tarea])
+def listar_tareas(usuario_id: int, db: Session = Depends(get_db)):
     return crud.obtener_tareas_por_usuario(db, usuario_id)
