@@ -14,7 +14,7 @@ class Tarea(TareaBase):
     usuario_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Cambiado de orm_mode
 
 class UsuarioBase(BaseModel):
     nombre: str
@@ -30,4 +30,4 @@ class Usuario(UsuarioBase):
     tareas: List[Tarea] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Cambiado de orm_mode
