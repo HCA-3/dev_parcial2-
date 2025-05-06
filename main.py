@@ -1,14 +1,34 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 import models
 from database import SessionLocal, engine
+import logging
+import os
+
+# Configuración de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Crear tablas
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="API de Usuarios y Tareas",
+    description="API para gestión de usuarios y sus tareas",
+    version="1.0.0"
+)
+
+# Configuración CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Modelos Pydantic
 class UsuarioBase(BaseModel):
@@ -46,14 +66,28 @@ def get_db():
     finally:
         db.close()
 
-# Endpoints de Usuarios
+# Endpoints básicos
+@app.get("/")
+def read_root():
+    return {"message": "Bienvenido a la API de Usuarios y Tareas"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+# Endpoints de Usuarios (CRUD completo)
 @app.post("/usuarios/", response_model=Usuario)
 def crear_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
-    db_usuario = models.Usuario(**usuario.dict())
-    db.add(db_usuario)
-    db.commit()
-    db.refresh(db_usuario)
-    return db_usuario
+    try:
+        db_usuario = models.Usuario(**usuario.dict())
+        db.add(db_usuario)
+        db.commit()
+        db.refresh(db_usuario)
+        return db_usuario
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error al crear usuario: {str(e)}")
+        raise HTTPException(status_code=400, detail="Error al crear usuario")
 
 @app.get("/usuarios/", response_model=List[Usuario])
 def leer_usuarios(db: Session = Depends(get_db)):
@@ -97,14 +131,19 @@ def usuarios_premium_inactivos(db: Session = Depends(get_db)):
         models.Usuario.activo == False
     ).all()
 
-# Endpoints de Tareas
+# Endpoints de Tareas (CRUD completo)
 @app.post("/tareas/", response_model=Tarea)
 def crear_tarea(tarea: TareaBase, db: Session = Depends(get_db)):
-    db_tarea = models.Tarea(**tarea.dict())
-    db.add(db_tarea)
-    db.commit()
-    db.refresh(db_tarea)
-    return db_tarea
+    try:
+        db_tarea = models.Tarea(**tarea.dict())
+        db.add(db_tarea)
+        db.commit()
+        db.refresh(db_tarea)
+        return db_tarea
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error al crear tarea: {str(e)}")
+        raise HTTPException(status_code=400, detail="Error al crear tarea")
 
 @app.get("/tareas/", response_model=List[Tarea])
 def leer_tareas(db: Session = Depends(get_db)):
@@ -126,3 +165,7 @@ def completar_tarea(tarea_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(tarea)
     return tarea
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
