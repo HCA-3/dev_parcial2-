@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: fastapi-app
+    name: fastapi-render
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        value: postgresql://user:password@localhost/dbname  # Cambiar por tu conexión real
+        value: postgresql://user:pass@localhost/dbname  # Reemplazar con tu DB real
